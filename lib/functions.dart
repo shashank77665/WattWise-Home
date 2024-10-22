@@ -1,43 +1,51 @@
-import firebase_admin
-from firebase_admin import credentials, db, firestore
-import datetime
+import 'package:firebase_database/firebase_database.dart';
 
-# Initialize the Firebase Admin SDK
-cred = credentials.Certificate("homeiot-6640c-firebase-adminsdk-holbh-cc427acd59.json")  # Add the path to your Firebase service account key here
-firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://homeiot-6640c-default-rtdb.firebaseio.com/'
-})
+void fetchData(Function(Map<String, dynamic>?) onDataUpdated) {
+  final databaseRef = FirebaseDatabase.instance.ref();
 
-def fetch_data_to_firebase():
-    try:
-        # Get a reference to the Realtime Database
-        ref = db.reference('/')
-        
-        # Fetch data from the Realtime Database
-        snapshot = ref.get()
+  databaseRef.onValue.listen((event) {
+    final snapshot = event.snapshot;
+    if (snapshot.exists) {
+      final int currentLoad = snapshot.child('currentLoad').value as int;
+      final int currentSolarGeneration =
+          snapshot.child('currentSolarGeneration').value as int;
 
-        if snapshot:
-            current_load = snapshot.get('currentLoad', None)
-            current_solar_generation = snapshot.get('currentSolarGeneration', None)
+      // Retrieve relay statuses
+      final Map<String, bool> relays = {};
+      final relaysSnapshot = snapshot.child('relays');
+      if (relaysSnapshot.exists) {
+        // Create a list to hold relay entries
+        final List<MapEntry<String, bool>> relayEntries = [];
 
-            if current_load is not None and current_solar_generation is not None:
-                # Prepare the sensor data to be sent to Firestore
-                sensor_data = {
-                    'currentLoad': current_load,
-                    'currentSolarGeneration': current_solar_generation,
-                    'timestamp': firestore.SERVER_TIMESTAMP  # Use Firestore's server timestamp
-                }
+        // Iterate over relay snapshots and collect entries
+        for (var relay in relaysSnapshot.children) {
+          relayEntries.add(MapEntry(relay.key!,
+              relay.value as bool)); // Assuming the value is boolean
+        }
 
-                # Add data to Firestore
-                firestore.client().collection('sensorData').add(sensor_data)
-                print("Data successfully added to Firestore")
-            else:
-                print("Some data fields are missing in the Realtime Database.")
-        else:
-            print("No data available in Realtime Database")
+        // Sort relay entries based on the relay names (keys)
+        relayEntries.sort((a, b) => a.key.compareTo(b.key));
 
-    except Exception as e:
-        print(f"Error fetching data: {e}")
+        // Add sorted entries to the relays map
+        for (var entry in relayEntries) {
+          relays[entry.key] = entry.value;
+        }
+      }
 
-# Run the function
-fetch_data_to_firebase()
+      final currentData = {
+        'currentLoad': currentLoad,
+        'currentSolarGeneration': currentSolarGeneration,
+        'relays': relays, // Include relay statuses in the current data
+      };
+
+      // Call the callback function with the updated data
+      onDataUpdated(currentData);
+    } else {
+      print('No data available');
+      onDataUpdated(null);
+    }
+  }, onError: (error) {
+    print('Error fetching data: $error');
+    onDataUpdated(null);
+  });
+}
