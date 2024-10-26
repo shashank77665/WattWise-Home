@@ -16,8 +16,8 @@ class Homepage extends StatefulWidget {
 
 class _HomepageState extends State<Homepage> {
   Map<String, dynamic>? sensorData;
-  late int loadInWatt;
-  late int solarCapacityInWatt;
+  int loadInWatt = 0;
+  int solarCapacityInWatt = 0;
   bool isLoaded = false;
 
   void getDataFromFirebase() {
@@ -26,7 +26,7 @@ class _HomepageState extends State<Homepage> {
       setState(() {
         sensorData = data;
         isLoaded = true;
-        loadInWatt = sensorData?['currentLoad'] * 12;
+        loadInWatt = sensorData?['currentLoad'] * 220;
         solarCapacityInWatt = sensorData?['currentSolarGeneration'] * 24;
         print('${sensorData!['relays']}');
       });
@@ -143,7 +143,7 @@ class _HomepageState extends State<Homepage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _buildStatisticsCard(
-                          title: '${loadInWatt ?? "N/A"} W',
+                          title: '${loadInWatt} W',
                           label: 'Load',
                           icon: Icons.electric_meter,
                         ),
@@ -151,7 +151,7 @@ class _HomepageState extends State<Homepage> {
                           width: 5,
                         ),
                         _buildStatisticsCard(
-                          title: '${solarCapacityInWatt ?? "N/A"} W',
+                          title: '${solarCapacityInWatt} W',
                           label: 'Generation',
                           icon: Icons.energy_savings_leaf,
                         ),
@@ -171,9 +171,8 @@ class _HomepageState extends State<Homepage> {
                         ));
                   },
                   child: CurrentUsageChart(
-                    currentLoad: (sensorData!['currentLoad'] ?? 0).toDouble(),
-                    currentSolarGeneration:
-                        (sensorData!['currentSolarGeneration'] ?? 0).toDouble(),
+                    currentLoad: (loadInWatt).toDouble(),
+                    currentSolarGeneration: (solarCapacityInWatt).toDouble(),
                   ),
                 ),
                 const SizedBox(
