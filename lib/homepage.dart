@@ -1,11 +1,13 @@
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iot/bulbcontrol.dart';
 import 'package:iot/chart.dart';
 import 'package:iot/functions.dart';
 import 'package:iot/button.dart';
-import 'package:iot/statistics.dart'; // Make sure to import your ButtonCard class
+import 'package:iot/statistics.dart';
+import 'package:iot/summary.dart'; // Make sure to import your ButtonCard class
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -167,7 +169,7 @@ class _HomepageState extends State<Homepage> {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => StatisticsPage(),
+                          builder: (context) => SummaryPage(),
                         ));
                   },
                   child: CurrentUsageChart(

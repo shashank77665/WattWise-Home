@@ -1,92 +1,113 @@
+// import 'package:cloud_firestore/cloud_firestore.dart';
+
+// //Get Data for Statictics HomePage
+// Future<List<Map<String, dynamic>>> getSensorDataByDate(DateTime date) async {
+//   // Initialize Firestore instance
+//   FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+//   // Start and end of the day
+//   DateTime startOfDay = DateTime(date.year, date.month, date.day);
+//   DateTime endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+//   // Query to fetch documents within the day
+//   QuerySnapshot querySnapshot = await firestore
+//       .collection('sensorData')
+//       .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+//       .where('timestamp', isLessThanOrEqualTo: endOfDay)
+//       .get();
+
+//   // Process results
+//   List<Map<String, dynamic>> sensorData = querySnapshot.docs
+//       .map((doc) => doc.data() as Map<String, dynamic>)
+//       .toList();
+
+//   return sensorData;
+// }
+
+// // Get Data for Statistics HomePage within a specified date range
+// Future<List<Map<String, dynamic>>> getSensorDataByDateRange(
+//     DateTime startDate, DateTime endDate) async {
+//   // Initialize Firestore instance
+//   FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+//   // Ensure the end date includes the entire day
+//   DateTime endOfRange =
+//       DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+
+//   // Query to fetch documents within the date range
+//   QuerySnapshot querySnapshot = await firestore
+//       .collection('sensorData')
+//       .where('timestamp', isGreaterThanOrEqualTo: startDate)
+//       .where('timestamp', isLessThanOrEqualTo: endOfRange)
+//       .get();
+
+//   // Process results
+//   List<Map<String, dynamic>> sensorData = querySnapshot.docs
+//       .map((doc) => doc.data() as Map<String, dynamic>)
+//       .toList();
+
+//   return sensorData;
+// }
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
-//Get Data for Statictics HomePage
-Future<List<Map<String, dynamic>>> getSensorDataByDate(DateTime date) async {
+// Function to fetch all sensor data from Firestore
+Future<List<Map<String, dynamic>>> fetchAllSensorData(
+    BuildContext context) async {
   // Initialize Firestore instance
   FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  // Start and end of the day
-  DateTime startOfDay = DateTime(date.year, date.month, date.day);
-  DateTime endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+  try {
+    // Query to fetch all documents in the sensorData collection with a timeout
+    QuerySnapshot querySnapshot = await firestore
+        .collection('sensorData')
+        .get()
+        .timeout(Duration(seconds: 30));
 
-  // Query to fetch documents within the day
-  QuerySnapshot querySnapshot = await firestore
-      .collection('sensorData')
-      .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-      .where('timestamp', isLessThanOrEqualTo: endOfDay)
-      .get();
-
-  // Process results
-  List<Map<String, dynamic>> sensorData = querySnapshot.docs
-      .map((doc) => doc.data() as Map<String, dynamic>)
-      .toList();
-
-  return sensorData;
-}
-
-Future<List<Map<String, dynamic>>> getSensorDataBetweenDates(
-    DateTime startDate, DateTime endDate) async {
-  // Initialize Firestore instance
-  FirebaseFirestore firestore = FirebaseFirestore.instance;
-
-  // Start and end of the specified range
-  DateTime startOfDay =
-      DateTime(startDate.year, startDate.month, startDate.day);
-  DateTime endOfDay =
-      DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
-
-  // Query to fetch documents within the specified date range
-  QuerySnapshot querySnapshot = await firestore
-      .collection('sensorData')
-      .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-      .where('timestamp', isLessThanOrEqualTo: endOfDay)
-      .get();
-
-  // Process results and convert to list of maps
-  List<Map<String, dynamic>> sensorData = querySnapshot.docs
-      .map((doc) => doc.data() as Map<String, dynamic>)
-      .toList();
-
-  return sensorData;
-}
-
-Future<Map<String, double>> getTotalConsumptionAndGenerationTillDate() async {
-  // Initialize Firestore instance
-  FirebaseFirestore firestore = FirebaseFirestore.instance;
-
-  // Query to fetch all documents in 'sensorData' collection
-  QuerySnapshot querySnapshot = await firestore.collection('sensorData').get();
-
-  // Initialize totals
-  double totalConsumption = 0;
-  double totalGeneration = 0;
-
-  // Process each document in the collection
-  for (var doc in querySnapshot.docs) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-    // Assuming 'currentLoad' and 'currentSolarGeneration' are in watts
-    if (data.containsKey('currentLoad') &&
-        data.containsKey('currentSolarGeneration')) {
-      double currentLoad = data['currentLoad'] ?? 0; // Fallback to 0 if null
-      double currentSolarGeneration =
-          data['currentSolarGeneration'] ?? 0; // Fallback to 0 if null
-
-      // Convert power to energy in kWh (assuming data is for each minute)
-      double loadKWh =
-          (currentLoad / 1000) * (1 / 60); // kWh for 1-minute interval
-      double generationKWh = (currentSolarGeneration / 1000) *
-          (1 / 60); // kWh for 1-minute interval
-
-      // Accumulate totals
-      totalConsumption += loadKWh;
-      totalGeneration += generationKWh;
-    }
+    // Process results
+    return querySnapshot.docs
+        .map((doc) => doc.data() as Map<String, dynamic>)
+        .toList();
+  } catch (e) {
+    // Show Snackbar indicating failure
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to fetch sensor data: ${e.toString()}'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return []; // Return an empty list in case of failure
   }
+}
 
-  // Return totals in a map
-  return {
-    'totalConsumptionTillDate': totalConsumption, // Total consumption in kWh
-    'totalGenerationTillDate': totalGeneration, // Total generation in kWh
-  };
+// Get Data for Statistics HomePage for a specific date
+Future<List<Map<String, dynamic>>> getSensorDataByDate(
+    BuildContext context, DateTime date) async {
+  // Fetch all sensor data
+  List<Map<String, dynamic>> allSensorData = await fetchAllSensorData(context);
+
+  // Filter the data for the specified date
+  return allSensorData.where((data) {
+    DateTime timestamp = (data['timestamp'] as Timestamp).toDate();
+    return timestamp.year == date.year &&
+        timestamp.month == date.month &&
+        timestamp.day == date.day;
+  }).toList();
+}
+
+// Get Data for Statistics HomePage within a specified date range
+Future<List<Map<String, dynamic>>> getSensorDataByDateRange(
+    BuildContext context, DateTime startDate, DateTime endDate) async {
+  // Fetch all sensor data
+  List<Map<String, dynamic>> allSensorData = await fetchAllSensorData(context);
+
+  // Filter the data for the specified date range
+  return allSensorData.where((data) {
+    DateTime timestamp = (data['timestamp'] as Timestamp).toDate();
+    return timestamp.isAfter(startDate
+            .subtract(Duration(days: 1))) && // To include the start date
+        timestamp.isBefore(
+            endDate.add(Duration(days: 1))); // To include the end date
+  }).toList();
 }

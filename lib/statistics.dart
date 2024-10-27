@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Import intl for date formatting
 import 'package:iot/energycalculation.dart';
@@ -21,24 +22,35 @@ class _StatisticsPageState extends State<StatisticsPage> {
   double totalGen = 0;
   DateTime date = DateTime.now();
   bool isLoading = true;
+  int totalMonthCon = 0;
+  int totalMonthGeneration = 0;
 
-  void calculateTotals() {
-    if (data != null && data!.isNotEmpty) {
+  void calculateTotals() async {
+    // Fetch data from Firestore
+    QuerySnapshot snapshot =
+        await FirebaseFirestore.instance.collection('sensorData').get();
+    if (snapshot.docs.isNotEmpty) {
       double totalConsumptionKWh = 0;
       double totalGenerationKWh = 0;
 
-      for (var entry in data!) {
-        // Convert power (watts) to energy (kWh) for each minute
-        double consumptionKWh =
-            (entry['currentLoad'] / 1000) * (1 / 60); // Convert to kWh
-        double generationKWh = (entry['currentSolarGeneration'] / 1000) *
-            (1 / 60); // Convert to kWh
+      for (var doc in snapshot.docs) {
+        double currentLoad = doc['currentLoad'] ?? 0; // Current in amps
+        double currentSolarGeneration =
+            doc['currentSolarGeneration'] ?? 0; // Current in amps
+
+        // Convert current to power in watts
+        double powerConsumption = 220 * currentLoad; // in watts
+        double powerGeneration = 220 * currentSolarGeneration; // in watts
+
+        // Calculate energy (kWh) for a 24-hour period
+        double consumptionKWh = (powerConsumption / 1000) * 24;
+        double generationKWh = (powerGeneration / 1000) * 24;
 
         // Accumulate total consumption
         totalConsumptionKWh += consumptionKWh;
 
-        // Accumulate total generation if the condition is met
-        if (entry['currentSolarGeneration'] > 1) {
+        // Accumulate total generation if condition is met
+        if (currentSolarGeneration > 1) {
           totalGenerationKWh += generationKWh;
         }
       }
@@ -50,8 +62,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
       });
     } else {
       // Handle the case when there's no data
-      totalCon = 0;
-      totalGen = 0;
+      setState(() {
+        totalCon = 0;
+        totalGen = 0;
+      });
     }
   }
 
@@ -108,7 +122,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     setState(() {
       isLoading = false;
     });
-    data = await getSensorDataByDate(date);
+    data = await getSensorDataByDate(context, date);
     MapMaxAvgMin();
     calculateTotals();
 
@@ -133,18 +147,98 @@ class _StatisticsPageState extends State<StatisticsPage> {
         child: SingleChildScrollView(
           child: Column(
             children: [
+              Container(
+                width: double.infinity,
+                height: 50,
+                decoration: BoxDecoration(
+                    color: const Color.fromARGB(255, 69, 148, 212),
+                    borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(15),
+                        bottomRight: Radius.circular(15))),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    Text(
+                      'Statistics',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: Colors.black,
+                      ),
+                      textAlign: TextAlign.center,
+                    )
+                  ],
+                ),
+              ),
+              Align(
+                alignment: Alignment.topLeft,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 20, top: 20),
+                    height: 40,
+                    width: 40,
+                    decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 220, 202, 202),
+                        borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.arrow_back),
+                  ),
+                ),
+              ),
               Text(
-                'Statistics',
-                style: TextStyle(fontSize: 20, color: Colors.black),
+                DateFormat.MMMM().format(
+                    DateTime.now()), // This will print the current month name
+                style: TextStyle(fontSize: 20),
               ),
               Container(
                 color: Colors.amber,
                 child: Column(
                   children: [
-                    Text('Total Consumption : '),
-                    Text('Total Generation : ')
+                    Text('Total Consumption : $totalMonthCon'),
+                    Text('Total Generation : $totalMonthGeneration')
                   ],
                 ),
+              ),
+              Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    children: [
+                      Text('Consumption'),
+                      Divider(),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Max : '),
+                          Text('Avg : '),
+                          Text('Min : ')
+                        ],
+                      )
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text('Generation'),
+                      Divider(),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Max : '),
+                          Text('Avg : '),
+                          Text('Min : ')
+                        ],
+                      )
+                    ],
+                  )
+                ],
+              ),
+              Divider(
+                color: Colors.black,
+                thickness: 2,
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
