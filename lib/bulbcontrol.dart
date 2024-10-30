@@ -2,7 +2,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iot/button.dart';
-import 'package:iot/functions.dart';
+import 'package:iot/extra/functions.dart';
 
 class BulbControlPage extends StatefulWidget {
   const BulbControlPage({Key? key}) : super(key: key);

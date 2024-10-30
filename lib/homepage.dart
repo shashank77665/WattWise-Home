@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iot/bulbcontrol.dart';
 import 'package:iot/chart.dart';
-import 'package:iot/functions.dart';
+import 'package:iot/extra/functions.dart';
 import 'package:iot/button.dart';
-import 'package:iot/statistics.dart';
-import 'package:iot/summary.dart'; // Make sure to import your ButtonCard class
+import 'package:iot/history/analysis.dart';
+import 'package:iot/history/data.dart';
+import 'package:iot/history/fetch.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -21,6 +22,7 @@ class _HomepageState extends State<Homepage> {
   int loadInWatt = 0;
   int solarCapacityInWatt = 0;
   bool isLoaded = false;
+  List<SensorData> data = [];
 
   void getDataFromFirebase() {
     print('Fetching Started');
@@ -36,9 +38,23 @@ class _HomepageState extends State<Homepage> {
     });
   }
 
+  List<SensorData> getData() {
+    return data; // Returns the current list of fetched SensorData
+  }
+
+  Future<void> fetchInstance() async {
+    var fetchedData = await fetchAllSensorData(context);
+    setState(() {
+      data = fetchedData
+          .map<SensorData>((item) => SensorData.fromMap(item))
+          .toList();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    fetchInstance();
     print('Init started');
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -165,12 +181,19 @@ class _HomepageState extends State<Homepage> {
               SizedBox(height: 10),
               if (isLoaded && sensorData != null) ...[
                 GestureDetector(
-                  onTap: () {
+                  onTap: () async {
+                    print('Starting get Data');
+                    await getData();
+                    print(data);
+                    print('get Data Completed');
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => SummaryPage(),
+                          builder: (context) => Analysis(
+                            data: [],
+                          ),
                         ));
+                    print('Moved Sucessfuly to Analysis Page');
                   },
                   child: CurrentUsageChart(
                     currentLoad: (loadInWatt).toDouble(),
